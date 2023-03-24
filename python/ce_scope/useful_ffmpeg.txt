@@ -1,0 +1,17 @@
+#ffmpeg
+
+#make video from imgs
+ffmpeg -framerate 30 -pattern_type glob -i '*.png' -c:v libx264 -pix_fmt yuv420p out.mp4
+
+# scale to 640
+ffmpeg -i out.mp4 -vf scale=640:-1 out_640.mp4
+
+# resize 640x480
+ffmpeg -i out.mp4 -vf scale=640:480 out_12fps_640x480.mp4
+
+
+
+
+
+# all same but 12fps
+ffmpeg -framerate 12 -pattern_type glob -i '*.png' -c:v libx264 -pix_fmt yuv420p -vf scale=640:480 out_12fps_640x480.mp4
