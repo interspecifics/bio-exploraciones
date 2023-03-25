@@ -1,8 +1,8 @@
 Notas de instalación:
 
 1. crear y activar entorno
-$ conda create -n speccoms python=3.9
-$ conda activate speccoms
+conda create -n speccoms python=3.9
+conda activate speccoms
 
 2. instalar dependencias
 pip install pygame oscpy 
