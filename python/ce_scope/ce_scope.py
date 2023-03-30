@@ -5,30 +5,6 @@
 speculative communications SCOPE.analyzer 2023
 -----------------------------------------------
 
-Based on scope_v1.5_ pc.py
-    + for debugging purposes in the pc + webcam
-    + windowed, change probe and synth with keys
-    + 4 similar synths, moving along probes
-
-[2023.03.14] ce_scope_a.py
-    + 1280 x 720 resolution
-    + better window decorators
-    + 3 modes: hori, vert, radial
-    + specculative communications osc compliant
-[2023.03.18] ce_scope_b.py
-    + tracker class
-    + gui!
-[2023.03.18] ce_scope_c.py
-    + contours 
-    + complete gui
-    + source:
-        image, video, cam
-    + analysis:
-        pixels
-        contours
-        objects
------------------------------------------------
-
 """
 
 import pygame
@@ -36,13 +12,13 @@ import pygame.camera
 from pygame.locals import *
 import math, statistics
 from oscpy.client import OSCClient
-import PySimpleGUI as sg
 import os
 #import serial
 #import threading
 import numpy as np
 import cv2
 from tracker import scTracker
+# -
 
 
 # * --------------------------------------- * #
@@ -50,9 +26,7 @@ OSC_HOST = "127.0.0.1"
 OSC_PORT = 9000
 OSC_CLIENT = []
 
-
 TIC_TIMER = 250
-
 
 # other globals
 f_count = 0
@@ -67,22 +41,23 @@ act_synth = 0
 past_synth = 0
 
 # * --------------------------------------- * #
-#DEVICE = 1
-DEVICE = "/dev/video2"
-#
+DEVICE = 0
+#DEVICE = "/dev/video2"
+# * --------------------------------------- * #
 CAM_SIZE = (640, 480)
 SIZE = (800, 640)
+SIZE = (800, 800)
+WI, HE = SIZE
 FILENAME = 'capture.png'
 
 
 
 #type of detection, 0:pixel, 1:contours
-obj_type = 0
+obj_type = 1
 #pixel path mode
-el_mode = 0
+probe_mode = 0
 #contour mode
 ct_mode = 0
-
 
 current_contours = [[0,0,0,0]]
 objects = []
@@ -95,129 +70,9 @@ source_mode = 2
 img_stream = None
 video_stream = None
 
-
 ct = scTracker()
 (H, W) = (640, 480)
 kernel = np.ones((2,2),np.uint8)
-
-
-# --------------------- otro layout --------------------
-p1_column = [
-    [
-        sg.Text('1. Select Source (img/vid/cam)', size =(250, 1)),
-    ],
-    [
-        sg.T(" "), sg.Text("[a] Load Image: "),
-        sg.In(size=(18, 1), enable_events=True, key="-IMG-IN-"),
-        sg.FileBrowse("Search", size=(9,1))
-    ],
-    [
-        sg.T(" "), sg.Text("[b] Load Video: "),
-        sg.In(size=(18, 1), enable_events=True, key="-VID-IN-"),
-        sg.FileBrowse("Search", size=(9,1)),
-    ],
-    [
-        sg.T(" "),sg.Button("[c] Use Camera", size=(40,1), enable_events=True, key="-CAM-IN-")
-    ],
-    [
-        sg.Graph(
-            (350, 10), (0, 0), (350, 10),
-            background_color='lightblue', key='-GRAPH-'
-        )
-    ],
-    
-    [
-        sg.T(" "),
-    ],
-    [
-        sg.Text('2. Select Object Type', size =(250, 1)),
-    ],
-    [
-        sg.T(" "),
-        sg.Radio('[a] Pixels', "RADIO1", default=True, enable_events=True, key="-mode1-"),
-        sg.Radio('[b] Shapes', "RADIO1", default=False, enable_events=True, key="-mode2-"),
-        sg.Radio('[c] Objects',"RADIO1", default=False, enable_events=True, key="-mode3-"),
-    ],
-    [
-        sg.T(" "),
-    ],
-    [
-        sg.Text('[a]. Pixels Settings', size =(250, 1)),
-    ],
-
-    [
-        sg.T(" "),
-        sg.Button("Circular", size=(10,1), enable_events=True, key="-moCI-"),
-        sg.Button("Horizontal", size=(10,1), enable_events=True, key="-moHO-"),
-        sg.Button("Vertical", size=(10,1), enable_events=True, key="-moVE-"),
-    ],
-    [
-        sg.T("Probe: "),
-        sg.Radio('[I]', "RADIO1", default=True, enable_events=True, key="-Pr1-"),
-        sg.Radio('[II]', "RADIO1", default=False, enable_events=True, key="-Pr2-"),
-        sg.Radio('[III]',"RADIO1", default=False, enable_events=True, key="-Pr3-"),
-        sg.Radio('[IV]',"RADIO1", default=False, enable_events=True, key="-Pr4-"),
-        sg.Radio('[V]',"RADIO1", default=False, enable_events=True, key="-Pr5-"),
-    ],
-    [
-        sg.T(" "),
-    ],
-    [
-        sg.Text('[b]. Shapes Settings', size =(250, 1)),
-    ],
-    [
-        sg.T(" "),
-        sg.Text('Threshold', size =(7, 1)), sg.InputText(default_text = "200", size =(6, 1), enable_events=True, key="-SS1-"),
-        sg.Text('Blur', size =(7, 1)), sg.InputText(default_text = "3", size =(6, 1), enable_events=True, key="-SS2-"),
-        sg.Text('Iters', size =(7, 1)), sg.InputText(default_text = "5", size =(6, 1), enable_events=True, key="-SS3-")
-    ],
-    [
-        sg.T(" "),
-    ],
-    [
-        sg.Text('[c]. Objects Settings', size =(250, 1)),
-    ],
-    [
-        sg.T(" "),
-        sg.Text('Param 1', size =(7, 1)), sg.InputText(default_text = "128", size =(6, 1), enable_events=True, key="-SO1-"),
-        sg.Text('Param 2', size =(7, 1)), sg.InputText(default_text = "0.5", size =(6, 1), enable_events=True, key="-SO2-"),
-        sg.Text('Param 3', size =(7, 1)), sg.InputText(default_text = "255", size =(6, 1), enable_events=True, key="-SO3-")
-    ],
-    [
-        sg.T(" "),
-    ],
-    [
-        sg.Exit()
-    ]
-]
-
-# ----- Full layout -----
-layout = [
-            [
-                sg.Column(p1_column, size=(400, 500))
-            ]
-        ]
-
-
-
-
-
-# --------------------- window layout --------------------
-#layout = [[sg.Text(':: Control de Modo e Inicio  ::')],
-#          [sg.Graph((400, 10), (0, 0), (400, 10),
-#                    background_color='lightblue', key='-GRAPH-')],
-#          [sg.Button('mode'), sg.Exit()]]
-
-window = sg.Window('Comunicaciones Especulativas', layout, finalize=True)
-graph = window['-GRAPH-']
-
-# -------------- magic code to integrate -----------------
-embed = graph.TKCanvas
-os.environ['SDL_WINDOWID'] = str(embed.winfo_id())
-# change this to 'x11' to make it work on Linux
-#os.environ['SDL_VIDEODRIVER'] = 'windib'
-os.environ['SDL_VIDEODRIVER'] = 'x11'
-# --------------    ------------------   -----------------
 
 
 # a. start the pygame engine
@@ -230,11 +85,11 @@ print(pygame.camera.list_cameras())
 DISPLAY = pygame.display.set_mode(SIZE, 0)       
 pygame.display.init()
 pygame.display.update()
-print(pygame.display.get_driver())
+#print(pygame.display.get_driver())
 #DISPLAY = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 # invisible cursor
-pygame.mouse.set_visible(False)
-pygame.display.set_caption(": Speculative Communications :")
+#pygame.mouse.set_visible(False)
+pygame.display.set_caption(": Comunicaciones Especulativas :")
 
 # a. start the cam
 CAM = pygame.camera.Camera(DEVICE, CAM_SIZE)
@@ -245,6 +100,7 @@ BASE = pygame.Surface(CAM_SIZE)
 OVERLAY = pygame.Surface(SIZE, pygame.SRCALPHA)
 ECHO =    pygame.Surface(SIZE, pygame.SRCALPHA)
 ECHO.fill((0,0,0,0))
+GUI = pygame.Surface((WI, HE),pygame.SRCALPHA)
 
 # a. states and counters
 clock = pygame.time.Clock()
@@ -256,7 +112,102 @@ TIC_EVENT = pygame.USEREVENT + 1
 FONT_PATH = './RevMiniPixel.ttf'
 #FONT_PATH = '/home/pi/W/scope/RevMiniPixel.ttf'
 FONT = pygame.font.Font(FONT_PATH, 14)
-FONTmini = pygame.font.Font(FONT_PATH, 20)
+FONTmed = pygame.font.Font(FONT_PATH, 10)
+FONTmini = pygame.font.Font(FONT_PATH, 8)
+
+
+# z. the pygame layout
+# ------------------------------------------------------------------
+#draw frames
+colors = [(0, 0, 0), (255, 255, 255), (255, 0, 0), (0, 255, 0), (0, 0, 255), (192,192,192), (127, 127, 127), (64, 64, 64)]
+colors = [(0, 0, 0), (255, 255, 255), (100, 144, 216), (147, 203, 241), (42, 60, 148), (164, 91, 92), (212, 159, 166), (58, 79, 91)]
+pygame.draw.rect(GUI, colors[1], pygame.Rect([1,1,WI-2, HE-2]), 1)
+pygame.draw.rect(GUI, colors[1], pygame.Rect([1,1,WI-2, 620]), 1)
+pygame.draw.rect(GUI, colors[1], pygame.Rect([1,620,WI-2, HE-560-2]), 1)
+
+#then buttons
+buttons = []
+# ------------------------------------------------------------------
+# A0: back to camera
+rb_in0 = [120, 640, 560, 20]
+btn_in0 = pygame.draw.rect(GUI, colors[1], pygame.Rect(rb_in0), 2)
+buttons.append(btn_in0) #- 0
+# ------------------------------------------------------------------
+# B0 .pixels
+rb_mo0 = [120, 670, 170, 20]
+btn_mo0 = pygame.draw.rect(GUI, colors[2], pygame.Rect(rb_mo0), 2)
+buttons.append(btn_mo0) #- 1
+# B1 .shapes
+rb_mo1 = [315, 670, 170, 20]
+btn_mo1 = pygame.draw.rect(GUI, colors[3], pygame.Rect(rb_mo1), 2)
+buttons.append(btn_mo1) #- 2
+# B2 .objects
+rb_mo2 = [510, 670, 170, 20]
+btn_mo2 = pygame.draw.rect(GUI, colors[4], pygame.Rect(rb_mo2), 2)
+buttons.append(btn_mo2) #- 3
+# ------------------------------------------------------------------
+# C0 .pixels path C
+rb_pix0 = [120, 700, 170, 20]
+btn_pix0 = pygame.draw.rect(GUI, colors[2], pygame.Rect(rb_pix0), 1)
+buttons.append(btn_pix0) #- 4
+# C1 .pixels path H
+rb_pix1 = [120, 730, 170, 20]
+btn_pix1 = pygame.draw.rect(GUI, colors[2], pygame.Rect(rb_pix1), 1)
+buttons.append(btn_pix1) #- 5
+# C2 .pixels path V
+rb_pix2 = [120, 760, 170, 20]
+btn_pix2 = pygame.draw.rect(GUI, colors[2], pygame.Rect(rb_pix2), 1)
+buttons.append(btn_pix2) #- 6
+# ------------------------------------------------------------------
+# D0 .contour thresh 1
+rb_cont0 = [315, 700, 170, 20]
+btn_cont0 = pygame.draw.rect(GUI, colors[3], pygame.Rect(rb_cont0), 1)
+buttons.append(btn_cont0) #- 7
+# D1 .contour thresh 2
+rb_cont1 = [315, 730, 170, 20]
+btn_cont1 = pygame.draw.rect(GUI, colors[3], pygame.Rect(rb_cont1), 1)
+buttons.append(btn_cont1) #- 8
+# D2 .contour param 3
+rb_cont2 = [315, 760, 170, 20]
+btn_cont2 = pygame.draw.rect(GUI, colors[3], pygame.Rect(rb_cont2), 1)
+buttons.append(btn_cont2) #- 9
+# ------------------------------------------------------------------
+# E0 .contour thresh 1
+rb_obj0 = [315, 700, 170, 20]
+btn_obj0 = pygame.draw.rect(GUI, colors[3], pygame.Rect(rb_obj0), 1)
+buttons.append(btn_obj0) #- 10
+# E1 .contour thresh 2
+rb_obj1 = [315, 730, 170, 20]
+btn_obj1 = pygame.draw.rect(GUI, colors[3], pygame.Rect(rb_obj1), 1)
+buttons.append(btn_obj1) #- 11
+# E2 .contour param 3
+rb_obj2 = [315, 760, 170, 20]
+btn_obj2 = pygame.draw.rect(GUI, colors[3], pygame.Rect(rb_obj2), 1)
+buttons.append(btn_obj2) #- 12
+
+#LABELS
+titles = [
+    "Cámara",
+    "Pixels",
+    "Formas",
+    "Objetos",
+    "Circular",
+    "Horizontal",
+    "Vertical",
+    "Thresh_A",
+    "Thresh_B"
+    "Param_C"
+    ]
+labels = [FONT.render(ti, 1, colors[1]) for ti in titles]
+#self.labels["norm"] = [_fonts[2].render("N", 1, color_text_2 if self.state['norm'] else self.color), [posit[0]-200, posit[1]+15]]
+i_lt = 0.5
+i_ht = 1.0
+hi_thresh = 127
+low_thresh = 255
+# ------------------------------------------------------------------
+
+
+
 
 # c. osc functions
 def start_osc(osc_host = OSC_HOST, osc_port = OSC_PORT):
@@ -282,7 +233,7 @@ def update_alldata_send():
 # c. osc functions
 def update_data_send_m1():
     global OSC_CLIENT, current_set, cursor, act_synth
-    print("[pixels_osc] --- ---- ----- ---- ")
+    print("[pixels_osc]: ", end='')
     act_set = current_set[cursor].copy()
     ruta = '/ce_scope/probe{}'.format(cursor)
     try:
@@ -290,12 +241,12 @@ def update_data_send_m1():
         OSC_CLIENT.send_message(ruta.encode('utf-8'), act_set)
         print(ruta+"\t{:0.2f}\t{:0.2f}\t{:0.2f}\t{:0.2f}".format(act_set[0], act_set[1], act_set[2], act_set[3]))
     except:
-        print("---- ----- ---- ")
+        print("\t ---- \t---- \t---- \t----")
     return
 
 def update_data_send_m2():
     global OSC_CLIENT, current_contours, objects
-    print("[contours_osc] --- ---- ----- ---- ")
+    print("[contours_osc]: ", end='')
 
     for (objectID, centroid) in objects.items():
         # set text id
@@ -309,7 +260,7 @@ def update_data_send_m2():
             OSC_CLIENT.send_message(ruta.encode('utf-8'), act_set)
             print(ruta+"\t{}\t{}\t{}".format(act_set[0], act_set[1], act_set[2]))
         except:
-            print("---- ----- ---- ")
+            print("\t---- \t---- \t---- \t----")
     return
 
 
@@ -340,19 +291,107 @@ def stop_start_synth(past_s, act_s):
         print("---- ----- ---- ")
     return
 
+# -mapping function
+def pmap(value, inMin, inMax, outMin, outMax, clamp=True):
+    """ like processing's map """
+    inSpan = inMax - inMin
+    outSpan = outMax - outMin
+    if (clamp):
+        if (value<inMin): value = inMin
+        if (value>inMax): value = inMax
+    try:
+        transVal = float(value - inMin) / float(inSpan)
+        return outMin + (transVal * outSpan)
+    except:
+        return 0
+
+
+# --------------------------------------------------------------------
+def check_buttons(_pos):
+    #global source_mode, img_stream, 
+    global f_count, probe_mode, obj_type, img_stream, video_stream, source_mode, cursor, past_cursor, i_lt, i_ht, low_thresh, hi_thresh, i_blur
+    print ("click on {}".format(_pos))
+    for j,bt in enumerate(buttons):
+        if (bt.collidepoint(_pos)):
+            if (j==0):
+                print("B2: Going camera")
+                source_mode = 2
+            elif (j==1):
+                print("------------------------------- Análisis de Píxels")
+                obj_type = 1
+            elif (j==2):
+                print("------------------------------- Análisis de Formas")
+                obj_type = 2
+            elif (j==3):
+                print("------------------------------- Análisis de Objetos")
+                #obj_type = 0
+            elif (j==4):
+                print("--[Trayectoria Circular]")
+                probe_mode = 0
+            elif (j==5):
+                print("--[Trayectoria Horizontal]")
+                probe_mode = 1
+            elif (j==6):
+                print("--[Trayectoria Vertical]")
+                probe_mode = 2
+            elif (j==7):
+                print("--[Umbral bajo]: ", end='')
+                i_lt = pmap(_pos[0], buttons[7].x, buttons[7].x + buttons[7].w, 0, 1)
+                low_thresh = int(i_lt*255)
+                print("{}".format(low_thresh))
+            elif (j==8):
+                print("--[Umbral alto]: ", end='')
+                i_ht = pmap(_pos[0], buttons[8].x, buttons[8].x + buttons[8].w, 0, 1)
+                hi_thresh = int(i_ht*255)
+                print("{}".format(hi_thresh))
+            elif (j==9):
+                print("--[Parámetro 3]: ", end='')
+                par_p03 = int(pmap(_pos[0], buttons[9].x, buttons[9].x + buttons[9].w, 0, 255))
+                print("{}".format(par_p03))
+    return
+# --------------------------------------------------------------------
+
 # f
 def handle_events():
+    global source_mode, img_stream, video_stream
     event_dict = {
         pygame.QUIT: exit_,
         pygame.KEYDOWN: handle_keys,
-        TIC_EVENT: tic
+        TIC_EVENT: tic,
+        pygame.MOUSEBUTTONUP: handle_clicks
         }
+    #
     for event in pygame.event.get():
         if event.type in event_dict:
             if (event.type==pygame.KEYDOWN):
                 event_dict[event.type](event)
             else:
                 event_dict[event.type]()
+        elif (event.type == pygame.DROPFILE):
+            path = event.file
+            print("\n\n---------------------------------------------------")
+            print("Archivo: {}".format(path))
+            exten = path[path.rfind('.'):].lower()
+            if (exten in [".jpg", ".jpeg", ".png"]):
+                # load an IMAGE
+                try:
+                    img_stream = pygame.image.load(path)
+                    source_mode = 0
+                except:
+                    print ("There are errors loading image.")
+            elif (exten in [".mp4", ".mpeg", ".avi"]):
+                # load a VIDEO
+                try:
+                    video_stream = cv2.VideoCapture(path)
+                    success, video_image = video_stream.read()
+                    fps = video_stream.get(cv2.CAP_PROP_FPS)
+                    v_clock = pygame.time.Clock()
+                    run = success
+                    source_mode = 1
+                except:
+                    print ("There are errors loading video.")
+            print("\n\n---------------------------------------------------")
+
     return
 
 # f
@@ -361,10 +400,10 @@ def handle_keys(event):
     code = 0
     if event.key == K_q:
         capture = False
-    elif event.key == K_s:
-        pygame.image.save (DISPLAY, FILENAME)
-    elif event.key == K_f:
-        pygame.display.toggle_fullscreen()
+    #elif event.key == K_s:
+    #    pygame.image.save (DISPLAY, FILENAME)
+    #elif event.key == K_f:
+    #    pygame.display.toggle_fullscreen()
     # the part of the codes
     elif event.key == K_i: #UP
         code=1
@@ -408,6 +447,8 @@ def handle_keys(event):
 
 # f
 def handle_clicks():
+    pos = pygame.mouse.get_pos()
+    check_buttons(pos)
     return
 
 # f tic for the timer
@@ -455,13 +496,14 @@ def update_graphics_void():
     # render to display
     #DISPLAY.fill(0,0,0)
     DISPLAY.blit(BASE, (of_base))
-    DISPLAY.blit(OVERLAY, (0,0))
     DISPLAY.blit(ECHO, (0,0))
+    DISPLAY.blit(OVERLAY, (0,0))
     pygame.display.update()
     return
 
 
 
+#
 of_base = [80,80]
 def update_graphics_pixels(mode_select = 2, source_mm = source_mode):
     """ process pixels from camera """
@@ -478,7 +520,10 @@ def update_graphics_pixels(mode_select = 2, source_mm = source_mode):
     # update overlay
     OVERLAY.fill((0,0,0, 0))
     #pygame.draw.rect(OVERLAY, (255, 255, 255, 128), (0,0,CAM_SIZE[0], CAM_SIZE[1]), 1)
-    pygame.draw.rect(OVERLAY, (0, 0, 0, 255), (of_base[0]+CAM_SIZE[0],0, of_base[0], SIZE[1]), 0)
+    # black rectangles
+    pygame.draw.rect(OVERLAY, (0, 0, 0, 255), (of_base[0]+CAM_SIZE[0],2, of_base[0]-2, of_base[1]+CAM_SIZE[1]-2), 0)
+    pygame.draw.rect(OVERLAY, (0, 0, 0, 255), (2, of_base[1]+CAM_SIZE[1], SIZE[0]-4, of_base[1]-20), 0)
+    pygame.draw.rect(OVERLAY, (0, 0, 0, 255), (2, 2, SIZE[0]-4, of_base[1]-2), 0)
     #pygame.draw.rect(OVERLAY, (255, 255, 255, 128), (CAM_SIZE[0],0, SIZE[0]-CAM_SIZE[0], SIZE[1]), 1)
     #update for each probe
     r = 0; x = 0; y = 0;
@@ -537,11 +582,11 @@ def update_graphics_pixels(mode_select = 2, source_mm = source_mode):
 
 
 
-offset_cam = [80,80]
 #
+offset_cam = [80,80]
 def update_graphics_contours(mode_select = 2, source_mm = source_mode):
     """ process contours from camera """
-    global BASE, OVERLAY, DISPLAY, current_set, objects, big_thresh, big_blur
+    global BASE, OVERLAY, DISPLAY, current_set, objects, lo_thresh, hi_thresh, i_lt, i_ht, big_blur
     # update frame
     if source_mm == 2:
         BASE = CAM.get_image(BASE)
@@ -561,11 +606,11 @@ def update_graphics_contours(mode_select = 2, source_mm = source_mode):
     frame = cv2.cvtColor(view, cv2.COLOR_RGB2BGR)
     # process on ocv
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    gray = cv2.GaussianBlur(gray, (big_blur*2+1, big_blur*2+1), 0)
-    gray= cv2.medianBlur(gray, big_blur)   #to remove salt and paper noise
+    gray = cv2.GaussianBlur(gray, (7,7), 0)
+    gray= cv2.medianBlur(gray, 3)   #to remove salt and paper noise
     gray = 255-gray
     #to binary
-    ret,thresh = cv2.threshold(gray,big_thresh,255,0)  #to detect white objects
+    ret,thresh = cv2.threshold(gray,low_thresh,hi_thresh,0)  #to detect white objects
     #outer bound only     
     thresh = cv2.morphologyEx(thresh, cv2.MORPH_GRADIENT, kernel)
     #to strength week pixels
@@ -613,6 +658,16 @@ def update_text():
     if (incoming_line != ""):
         nu_datos = incoming_line
         print("[serial]: {}".format(nu_datos))"""
+
+    # slider bars
+    #GUI.fill((0,0,0,0))
+    pygame.draw.rect(GUI, colors[0], (buttons[7].x+1, buttons[7].y+1, buttons[7].w-2, buttons[7].h-2), 0)
+    pygame.draw.rect(GUI, colors[-1], (buttons[7].x+1, buttons[7].y+1, i_lt*buttons[7].w-2, buttons[7].h-2), 0)
+    pygame.draw.rect(GUI, colors[0], (buttons[8].x+1, buttons[8].y+1, buttons[8].w-2, buttons[8].h-2), 0)
+    pygame.draw.rect(GUI, colors[-1], (buttons[8].x+1, buttons[8].y+1, i_ht*buttons[8].w-2, buttons[8].h-2), 0)
+    for i,la in enumerate(labels):
+        GUI.blit(la, (buttons[i].x+5, buttons[i].y+3))
+    DISPLAY.blit(GUI, (0,0))
     return
 
 
@@ -622,95 +677,19 @@ def update_text():
 
 # the loop from outside
 def app_loop():
-    global f_count, el_mode, obj_type, img_stream, video_stream, source_mode, cursor, past_cursor, big_thresh, big_blur
+    global f_count, probe_mode, obj_type, img_stream, video_stream, source_mode, cursor, past_cursor, big_thresh, big_blur
     while capture:
-        # stop
-        event, values = window.read(timeout=10)
-        # -GUI EVENTS
-
-        # ...detection mode
-        if event == '-mode1-':
-            obj_type = 1
-        elif event == '-mode2-':
-            obj_type = 2
-        elif event == '-mode3-':
-            obj_type = 0
-
-        elif event == '-moCI-':
-            el_mode = 0
-        elif event == '-moHO-':
-            el_mode = 1
-        elif event == '-moVE-':
-            el_mode = 2
-
-        elif event == '-SS1-':
-            try:
-                big_thresh = int(values['-SS1-'])
-            except:
-                print("invalid thresh value")
-        elif event == '-SS2-':
-            try:
-                big_blur = int(values['-SS1-'])
-            except:
-                print("invalid blur value")
-        # ...source mode
-        elif event == '-IMG-IN-':
-            img_file = values['-IMG-IN-']
-            try:
-                # load image
-                img_stream = pygame.image.load(img_file)
-                source_mode = 0
-            except:
-                print ("There are errors loading image.")
-        elif event == '-VID-IN-':
-            video_file = values['-VID-IN-']
-            try:
-                # set video stream
-                video_stream = cv2.VideoCapture(video_file)
-                success, video_image = video_stream.read()
-                fps = video_stream.get(cv2.CAP_PROP_FPS)
-                v_clock = pygame.time.Clock()
-                run = success
-                source_mode = 1
-            except:
-                print ("There are errors loading video.")
-        elif event == '-CAM-IN-':
-            source_mode = 2
-
-
-        # cursor selector
-        elif event =='-Pr1-':
-            past_cursor = cursor
-            cursor = 0
-        elif event =='-Pr2-':
-            past_cursor = cursor
-            cursor = 1
-        elif event =='-Pr3-':
-            past_cursor = cursor
-            cursor = 2
-        elif event =='-Pr4-':
-            past_cursor = cursor
-            cursor = 3
-        elif event =='-Pr5-':
-            past_cursor = cursor
-            cursor = 4
-
-        elif event in (sg.WIN_CLOSED, 'Exit'):
-            pygame.quit()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-        # go
         handle_events()
-        handle_clicks()
+        #handle_clicks()
         if obj_type == 0:
             update_graphics_void()
         elif obj_type == 1:
-            update_graphics_pixels(el_mode, source_mode)
+            update_graphics_pixels(probe_mode, source_mode)
         elif obj_type == 2:
             update_graphics_contours(ct_mode, source_mode)
+        # finally the gui
         update_text()
-        tic()
+        #tic()
         clock.tick(12)
         f_count = f_count+1
 
