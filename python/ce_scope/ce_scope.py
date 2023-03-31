@@ -69,6 +69,7 @@ big_blur = 3
 source_mode = 2
 img_stream = None
 video_stream = None
+ffcc = 0
 
 ct = scTracker()
 (H, W) = (640, 480)
@@ -353,7 +354,7 @@ def check_buttons(_pos):
 
 # f
 def handle_events():
-    global source_mode, img_stream, video_stream
+    global source_mode, img_stream, video_stream, ffcc
     event_dict = {
         pygame.QUIT: exit_,
         pygame.KEYDOWN: handle_keys,
@@ -387,6 +388,7 @@ def handle_events():
                     fps = video_stream.get(cv2.CAP_PROP_FPS)
                     v_clock = pygame.time.Clock()
                     run = success
+                    ffcc = 0
                     source_mode = 1
                 except:
                     print ("There are errors loading video.")
@@ -507,7 +509,7 @@ def update_graphics_void():
 of_base = [80,80]
 def update_graphics_pixels(mode_select = 2, source_mm = source_mode):
     """ process pixels from camera """
-    global BASE, OVERLAY, DISPLAY, current_set
+    global BASE, OVERLAY, DISPLAY, current_set, ffcc
     # update frame
     if source_mm == 2:
         BASE = CAM.get_image(BASE)
@@ -517,6 +519,13 @@ def update_graphics_pixels(mode_select = 2, source_mm = source_mode):
         success, video_image = video_stream.read()
         if success:
             BASE =pygame.image.frombuffer(video_image.tobytes(), video_image.shape[1::-1], "BGR")
+            ffcc+=1
+            if (ffcc == video_stream.get(cv2.CAP_PROP_FRAME_COUNT)-2):
+                print("-----------------------------------------------------restarting")
+                ffcc = 0
+                video_stream.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                success, video_image = video_stream.read()
+                BASE =pygame.image.frombuffer(video_image.tobytes(), video_image.shape[1::-1], "BGR")
     # update overlay
     OVERLAY.fill((0,0,0, 0))
     #pygame.draw.rect(OVERLAY, (255, 255, 255, 128), (0,0,CAM_SIZE[0], CAM_SIZE[1]), 1)
@@ -586,7 +595,7 @@ def update_graphics_pixels(mode_select = 2, source_mm = source_mode):
 offset_cam = [80,80]
 def update_graphics_contours(mode_select = 2, source_mm = source_mode):
     """ process contours from camera """
-    global BASE, OVERLAY, DISPLAY, current_set, objects, lo_thresh, hi_thresh, i_lt, i_ht, big_blur
+    global BASE, OVERLAY, DISPLAY, current_set, objects, lo_thresh, hi_thresh, i_lt, i_ht, big_blur, ffcc
     # update frame
     if source_mm == 2:
         BASE = CAM.get_image(BASE)
@@ -596,6 +605,13 @@ def update_graphics_contours(mode_select = 2, source_mm = source_mode):
         success, video_image = video_stream.read()
         if success:
             BASE =pygame.image.frombuffer(video_image.tobytes(), video_image.shape[1::-1], "BGR")
+            ffcc+=1
+            if (ffcc == video_stream.get(cv2.CAP_PROP_FRAME_COUNT)-2):
+                ffcc = 0
+                video_stream.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                success, video_image = video_stream.read()
+                BASE =pygame.image.frombuffer(video_image.tobytes(), video_image.shape[1::-1], "BGR")
+            #continue
     # update overlay
     OVERLAY.fill((0,0,0, 0))
     pygame.draw.rect(OVERLAY, (0, 0, 0, 255), (offset_cam[0]+CAM_SIZE[0],0, offset_cam[0], SIZE[1]), 0)
