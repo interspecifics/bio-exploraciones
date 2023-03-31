@@ -14,7 +14,7 @@ pip install ipython
 3. copiar directorio
 ce_scope
     |
-    |-ce_scope_c.py
+    |-ce_scope.py
     |-tracker.py
     |-RevMiniPixel.ttf
 
