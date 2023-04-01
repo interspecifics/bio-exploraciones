@@ -32,7 +32,7 @@ TIC_TIMER = 250
 f_count = 0
 capture = True
 ii = 0
-N_PROBES = 5
+N_PROBES = 10
 current_set = [[0.0,0.0,0.0,0.0] for j in range(N_PROBES)]
 cursor = 0
 past_cursor = 0
@@ -56,7 +56,7 @@ FILENAME = 'capture.png'
 obj_type = 1
 send_all_probes = False
 #pixel path mode
-probe_mode = 0
+probe_mode = 1
 #contour mode
 ct_mode = 0
 
@@ -491,7 +491,7 @@ def exit_():
     #t.join()
     #while t.isAlive():
     #    pass
-    #print("Thread stopped.")
+    print("Thread stopped.")
     #serial_port.close()
     return
 
@@ -565,7 +565,7 @@ def update_graphics_pixels(mode_select = 2, source_mm = source_mode):
             # horizontal
             r = 59*i
             x = f_count % CAM_SIZE[0]
-            y = (i+1) * CAM_SIZE[1]/(N_PROBES+1.0)
+            y = (i+1) * (CAM_SIZE[1]/3)/(N_PROBES+1.0)
         elif(mode_select == 2):
             # horizontal
             r = 59*i
