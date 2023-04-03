@@ -5,6 +5,7 @@
 speculative communications SCOPE.analyzer 2023
 -----------------------------------------------
 
+
 """
 
 import pygame
@@ -59,6 +60,8 @@ send_all_probes = False
 probe_mode = 0
 #contour mode
 ct_mode = 0
+cont_rev = True
+cont_view = False
 
 current_contours = [[0,0,0,0]]
 objects = []
@@ -98,7 +101,7 @@ CAM = pygame.camera.Camera(DEVICE, CAM_SIZE)
 CAM.start()
 # a. start overlays
 #screen = pygame.surface.Surface(SIZE, 0, display)
-BASE = pygame.Surface(CAM_SIZE)
+BASE = pygame.Surface(CAM_SIZE, pygame.SRCALPHA)
 OVERLAY = pygame.Surface(SIZE, pygame.SRCALPHA)
 ECHO =    pygame.Surface(SIZE, pygame.SRCALPHA)
 ECHO.fill((0,0,0,0))
@@ -169,23 +172,31 @@ buttons.append(btn_cont0) #- 7
 rb_cont1 = [315, 730, 170, 20]
 btn_cont1 = pygame.draw.rect(GUI, colors[3], pygame.Rect(rb_cont1), 1)
 buttons.append(btn_cont1) #- 8
-# D2 .contour param 3
-rb_cont2 = [315, 760, 170, 20]
+# D2 .contour rev
+rb_cont2 = [315, 760, 80, 20]
 btn_cont2 = pygame.draw.rect(GUI, colors[3], pygame.Rect(rb_cont2), 1)
 buttons.append(btn_cont2) #- 9
+# E2 .contour view
+rb_cont3 = [405, 760, 80, 20]
+btn_cont3 = pygame.draw.rect(GUI, colors[3], pygame.Rect(rb_cont3), 1)
+buttons.append(btn_cont3) #- 10
 # ------------------------------------------------------------------
 # E0 .contour thresh 1
 rb_obj0 = [315, 700, 170, 20]
 btn_obj0 = pygame.draw.rect(GUI, colors[3], pygame.Rect(rb_obj0), 1)
-buttons.append(btn_obj0) #- 10
+buttons.append(btn_obj0) #- 11
 # E1 .contour thresh 2
 rb_obj1 = [315, 730, 170, 20]
 btn_obj1 = pygame.draw.rect(GUI, colors[3], pygame.Rect(rb_obj1), 1)
-buttons.append(btn_obj1) #- 11
-# E2 .contour param 3
-rb_obj2 = [315, 760, 170, 20]
+buttons.append(btn_obj1) #- 12
+# E2 .contour reverse
+rb_obj2 = [315, 760, 80, 20]
 btn_obj2 = pygame.draw.rect(GUI, colors[3], pygame.Rect(rb_obj2), 1)
-buttons.append(btn_obj2) #- 12
+buttons.append(btn_obj2) #- 13
+# E2 .contour view
+rb_obj3 = [405, 760, 80, 20]
+btn_obj3 = pygame.draw.rect(GUI, colors[3], pygame.Rect(rb_obj3), 1)
+buttons.append(btn_obj3) #- 14
 
 #LABELS
 titles = [
@@ -198,13 +209,14 @@ titles = [
     "Vertical",
     "Thresh_A",
     "Thresh_B",
-    "Param_C"
+    "Reverse",
+    "View"
     ]
 labels = [FONT.render(ti, 1, colors[1]) for ti in titles]
 #self.labels["norm"] = [_fonts[2].render("N", 1, color_text_2 if self.state['norm'] else self.color), [posit[0]-200, posit[1]+15]]
-i_lt = 0.5
+i_lt = 0.75
 i_ht = 1.0
-hi_thresh = 127
+hi_thresh = 192
 low_thresh = 255
 # ------------------------------------------------------------------
 
@@ -324,21 +336,29 @@ def pmap(value, inMin, inMax, outMin, outMax, clamp=True):
 # --------------------------------------------------------------------
 def check_buttons(_pos):
     #global source_mode, img_stream, 
-    global f_count, probe_mode, obj_type, img_stream, video_stream, source_mode, cursor, past_cursor, i_lt, i_ht, low_thresh, hi_thresh, i_blur
+    global f_count, probe_mode, obj_type, img_stream, video_stream, source_mode, cursor, past_cursor, i_lt, i_ht, low_thresh, hi_thresh, i_blur, cont_rev, cont_view
     print ("click on {}".format(_pos))
     for j,bt in enumerate(buttons):
         if (bt.collidepoint(_pos)):
             if (j==0):
                 print("B2: Going camera")
                 source_mode = 2
+                ECHO.fill((0,0,0, 0))
             elif (j==1):
                 print("------------------------------- Análisis de Píxels")
                 obj_type = 1
+                ECHO.fill((0,0,0, 0))
             elif (j==2):
                 print("------------------------------- Análisis de Formas")
                 obj_type = 2
+                ECHO.fill((0,0,0, 0))
+                low_thresh = 192
+                i_lt = 0.75
+                hi_thresh = 255
+                i_ht = 1.0
             elif (j==3):
                 print("------------------------------- Análisis de Objetos")
+                ECHO.fill((0,0,0, 0))
                 #obj_type = 0
             elif (j==4):
                 print("--[Trayectoria Circular]")
@@ -360,9 +380,14 @@ def check_buttons(_pos):
                 hi_thresh = int(i_ht*255)
                 print("{}".format(hi_thresh))
             elif (j==9):
-                print("--[Parámetro 3]: ", end='')
-                par_p03 = int(pmap(_pos[0], buttons[9].x, buttons[9].x + buttons[9].w, 0, 255))
-                print("{}".format(par_p03))
+                print("--[Reverse]: ", end='')
+                cont_rev = not cont_rev
+                #par_p03 = int(pmap(_pos[0], buttons[9].x, buttons[9].x + buttons[9].w, 0, 255))
+                print("{}".format(cont_rev))
+            elif (j==10):
+                print("--[View Contours]: ", end='')
+                cont_view = not cont_view
+                print("{}".format(cont_view))
     return
 # --------------------------------------------------------------------
 
@@ -576,7 +601,7 @@ def update_graphics_pixels(mode_select = 2, source_mm = source_mode):
         
         #pygame.draw.rect(OVERLAY, (255-color.r, 255-color.g, 255-color.b, 128), (x-5, y-5, 10,10), 0)
         if (i==cursor):
-            pygame.draw.rect(OVERLAY, (255-color.r, 255-color.g, 255-color.b, 255), (of_base[0]+x-6, of_base[1]+y-6, 12,12), 3)
+            pygame.draw.rect(OVERLAY, (0, 255, 0, 255), (of_base[0]+x-6, of_base[1]+y-6, 12,12), 3)
             #pygame.draw.rect(ECHO, (0,0,0, 255), (0, 0, 32*5, 3), 0)
             #pygame.draw.rect(ECHO, (255, 255, 255, 255), (32*i, 0, 32, 3), 0)
         else:
@@ -609,27 +634,35 @@ def update_graphics_pixels(mode_select = 2, source_mm = source_mode):
     return
 
 
+video_image=None
+def put_alpha(Dest, Src):                       # write alpha values
+    ref = pygame.surfarray.pixels_alpha(Dest)
+    np.copyto(ref, Src) 
+    del ref
 
 #
 offset_cam = [80,80]
 def update_graphics_contours(mode_select = 2, source_mm = source_mode):
     """ process contours from camera """
-    global BASE, OVERLAY, DISPLAY, current_set, objects, lo_thresh, hi_thresh, i_lt, i_ht, big_blur, ffcc
+    global BASE, OVERLAY, DISPLAY, current_set, objects, lo_thresh, hi_thresh, i_lt, i_ht, big_blur, ffcc, video_image
     # update frame
     if source_mm == 2:
         BASE = CAM.get_image(BASE)
     elif source_mm == 0:
         BASE = img_stream
+        BASE = pygame.Surface.convert_alpha(BASE)
     elif source_mm ==1:
         success, video_image = video_stream.read()
         if success:
-            BASE =pygame.image.frombuffer(video_image.tobytes(), video_image.shape[1::-1], "BGR")
+            BASE = pygame.image.frombuffer(video_image.tobytes(), video_image.shape[1::-1], "BGR")
+            BASE = pygame.Surface.convert_alpha(BASE)
             ffcc+=1
             if (ffcc == video_stream.get(cv2.CAP_PROP_FRAME_COUNT)-2):
                 ffcc = 0
                 video_stream.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 success, video_image = video_stream.read()
-                BASE =pygame.image.frombuffer(video_image.tobytes(), video_image.shape[1::-1], "BGR")
+                BASE = pygame.image.frombuffer(video_image.tobytes(), video_image.shape[1::-1], "BGR")
+                BASE = pygame.Surface.convert_alpha(BASE)
             #continue
     # update overlay
     OVERLAY.fill((0,0,0, 0))
@@ -638,8 +671,7 @@ def update_graphics_contours(mode_select = 2, source_mm = source_mode):
     pygame.draw.rect(OVERLAY, (0, 0, 0, 255), (of_base[0]+CAM_SIZE[0],2, of_base[0]-2, of_base[1]+CAM_SIZE[1]-2), 0)
     pygame.draw.rect(OVERLAY, (0, 0, 0, 255), (2, of_base[1]+CAM_SIZE[1], SIZE[0]-4, of_base[1]-20), 0)
     pygame.draw.rect(OVERLAY, (0, 0, 0, 255), (2, 2, SIZE[0]-4, of_base[1]-2), 0)
-
-
+    # 
 
     # cast to ocv
     view = pygame.surfarray.array3d(BASE)
@@ -647,18 +679,24 @@ def update_graphics_contours(mode_select = 2, source_mm = source_mode):
     frame = cv2.cvtColor(view, cv2.COLOR_RGB2BGR)
     # process on ocv
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    gray = cv2.GaussianBlur(gray, (7,7), 0)
+    gray = cv2.GaussianBlur(gray, (3,3), 0)
     gray= cv2.medianBlur(gray, 3)   #to remove salt and paper noise
-    gray = 255-gray
+    if (cont_rev==True):
+        gray = 255-gray
     #to binary
     ret,thresh = cv2.threshold(gray,low_thresh,hi_thresh,0)  #to detect white objects
-    #outer bound only     
+    #outer bound only
     thresh = cv2.morphologyEx(thresh, cv2.MORPH_GRADIENT, kernel)
     #to strength week pixels
     thresh = cv2.dilate(thresh,kernel,iterations = 5)
     contours,hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    #contours, _ = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-
+    #contours, _ = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE) 
+    if cont_view:
+        nonview = cv2.bitwise_and(view,view,mask = thresh)
+        BASE = pygame.image.frombuffer(nonview.tobytes(), nonview.shape[1::-1], "BGR")
+        BASE = pygame.Surface.convert_alpha(BASE)
+    #
+ 
     for k,c in enumerate(contours):
         rect = cv2.boundingRect(c)
         x, y, w, h = rect
@@ -682,6 +720,7 @@ def update_graphics_contours(mode_select = 2, source_mm = source_mode):
     # render to display
     #DISPLAY.fill(0,0,0)
     DISPLAY.blit(BASE, (of_base))
+    #DISPLAY.blit(non_view, (of_base))
     DISPLAY.blit(OVERLAY, (0,0))
     DISPLAY.blit(ECHO, (0,0))
     pygame.display.update()
@@ -706,6 +745,34 @@ def update_text():
     pygame.draw.rect(GUI, colors[-1], (buttons[7].x+1, buttons[7].y+1, i_lt*buttons[7].w-2, buttons[7].h-2), 0)
     pygame.draw.rect(GUI, colors[0], (buttons[8].x+1, buttons[8].y+1, buttons[8].w-2, buttons[8].h-2), 0)
     pygame.draw.rect(GUI, colors[-1], (buttons[8].x+1, buttons[8].y+1, i_ht*buttons[8].w-2, buttons[8].h-2), 0)
+    if obj_type==1:
+        pygame.draw.rect(GUI, colors[-1], (buttons[1].x+1, buttons[1].y+1, buttons[1].w-2, buttons[1].h-2), 0)
+        pygame.draw.rect(GUI, colors[0], (buttons[2].x+1, buttons[2].y+1, buttons[2].w-2, buttons[2].h-2), 0)
+        pygame.draw.rect(GUI, colors[0], (buttons[3].x+1, buttons[3].y+1, buttons[3].w-2, buttons[3].h-2), 0)
+    elif obj_type==2:
+        pygame.draw.rect(GUI, colors[0], (buttons[1].x+1, buttons[1].y+1, buttons[1].w-2, buttons[1].h-2), 0)
+        pygame.draw.rect(GUI, colors[-1], (buttons[2].x+1, buttons[2].y+1, buttons[2].w-2, buttons[2].h-2), 0)
+        pygame.draw.rect(GUI, colors[0], (buttons[3].x+1, buttons[3].y+1, buttons[3].w-2, buttons[3].h-2), 0)
+    if probe_mode==0:
+        pygame.draw.rect(GUI, colors[-1], (buttons[4].x+1, buttons[4].y+1, buttons[4].w-2, buttons[4].h-2), 0)
+        pygame.draw.rect(GUI, colors[0], (buttons[5].x+1, buttons[5].y+1, buttons[5].w-2, buttons[5].h-2), 0)
+        pygame.draw.rect(GUI, colors[0], (buttons[6].x+1, buttons[6].y+1, buttons[6].w-2, buttons[6].h-2), 0)
+    elif probe_mode==1:
+        pygame.draw.rect(GUI, colors[0], (buttons[4].x+1, buttons[4].y+1, buttons[4].w-2, buttons[4].h-2), 0)
+        pygame.draw.rect(GUI, colors[-1], (buttons[5].x+1, buttons[5].y+1, buttons[5].w-2, buttons[5].h-2), 0)
+        pygame.draw.rect(GUI, colors[0], (buttons[6].x+1, buttons[6].y+1, buttons[6].w-2, buttons[6].h-2), 0)
+    elif probe_mode==2:
+        pygame.draw.rect(GUI, colors[0], (buttons[4].x+1, buttons[4].y+1, buttons[4].w-2, buttons[4].h-2), 0)
+        pygame.draw.rect(GUI, colors[0], (buttons[5].x+1, buttons[5].y+1, buttons[5].w-2, buttons[5].h-2), 0)
+        pygame.draw.rect(GUI, colors[-1], (buttons[6].x+1, buttons[6].y+1, buttons[6].w-2, buttons[6].h-2), 0)    
+    if cont_rev:
+        pygame.draw.rect(GUI, colors[-1], (buttons[9].x+1, buttons[9].y+1, buttons[9].w-2, buttons[9].h-2), 0)
+    else:
+        pygame.draw.rect(GUI, colors[0], (buttons[9].x+1, buttons[9].y+1, buttons[9].w-2, buttons[9].h-2), 0)        
+    if cont_view:
+        pygame.draw.rect(GUI, colors[-1], (buttons[10].x+1, buttons[10].y+1, buttons[10].w-2, buttons[10].h-2), 0)
+    else:
+        pygame.draw.rect(GUI, colors[0], (buttons[10].x+1, buttons[10].y+1, buttons[10].w-2, buttons[10].h-2), 0)
     for i,la in enumerate(labels):
         GUI.blit(la, (buttons[i].x+5, buttons[i].y+3))
     DISPLAY.blit(GUI, (0,0))
