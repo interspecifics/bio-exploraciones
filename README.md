@@ -73,7 +73,7 @@
 	
 		python ce_scope.py
 
-3. More video samples (from Fernan Federici) here:
+3. Mas muestras de video (de Fernan Federici) aqui:
 	https://drive.google.com/drive/folders/1juiJo1SFdUbRT9GIgcenat3vmIfHKng9?usp=sharing
 	
 4. Have fun!
