@@ -67,8 +67,9 @@ big_thresh = 200
 big_blur = 3
 
 #source_mode: 0:img, 1:vid, 2:cam
-source_mode = 2
+source_mode = 0
 img_stream = None
+img_stream = pygame.image.load("samples/a2398_480.jpg")
 video_stream = None
 ffcc = 0
 
@@ -95,7 +96,7 @@ pygame.display.set_caption(": Comunicaciones Especulativas :")
 
 # a. start the cam
 CAM = pygame.camera.Camera(DEVICE, CAM_SIZE)
-CAM.start()
+#CAM.start()
 # a. start overlays
 #screen = pygame.surface.Surface(SIZE, 0, display)
 BASE = pygame.Surface(CAM_SIZE)
@@ -331,6 +332,7 @@ def check_buttons(_pos):
             if (j==0):
                 print("B2: Going camera")
                 source_mode = 2
+                CAM.start()
             elif (j==1):
                 print("------------------------------- Análisis de Píxels")
                 obj_type = 1
@@ -388,6 +390,10 @@ def handle_events():
             print("Archivo: {}".format(path))
             exten = path[path.rfind('.'):].lower()
             if (exten in [".jpg", ".jpeg", ".png"]):
+                try:
+                    CAM.stop()
+                except:
+                    kk = 0
                 # load an IMAGE
                 try:
                     img_stream = pygame.image.load(path)
@@ -395,6 +401,10 @@ def handle_events():
                 except:
                     print ("There are errors loading image.")
             elif (exten in [".mp4", ".mpeg", ".avi"]):
+                try:
+                    CAM.stop()
+                except:
+                    kk = 0
                 # load a VIDEO
                 try:
                     video_stream = cv2.VideoCapture(path)
