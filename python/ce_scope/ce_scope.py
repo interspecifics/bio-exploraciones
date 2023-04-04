@@ -586,6 +586,8 @@ def handle_keys(event):
         code=2
     #elif event.key == K_k: #DOWN
     #    code=3
+    elif event.key == K_j: #LEFT
+        code=4
     elif event.key == K_1: #insert on linked_ids[0]
         insert_index = 1
     elif event.key == K_2: #insert on linked_ids[1]
