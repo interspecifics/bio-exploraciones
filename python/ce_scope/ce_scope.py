@@ -5,6 +5,7 @@
 speculative communications SCOPE.analyzer 2023
 -----------------------------------------------
 
+
 """
 
 import pygame
@@ -408,6 +409,12 @@ def check_unbuttons(_pos):
             if (j==0):
                 print("B2: Going camera")
                 source_mode = 2
+                try:
+                    CAM.start()
+                    print ("[camera]: ON")
+                except:
+                    print ("can't start camera")
+
                 ECHO.fill((0,0,0, 0))
             elif (j==1):
                 print("------------------------------- Análisis de Píxels")
@@ -527,6 +534,11 @@ def handle_events():
             print("Archivo: {}".format(path))
             exten = path[path.rfind('.'):].lower()
             if (exten in [".jpg", ".jpeg", ".png"]):
+                try:
+                    CAM.stop()
+                    print ("[camera]: OFF")
+                except:
+                    print ("can't stop camera")
                 # load an IMAGE
                 try:
                     img_stream = pygame.image.load(path)
@@ -534,6 +546,11 @@ def handle_events():
                 except:
                     print ("There are errors loading image.")
             elif (exten in [".mp4", ".mpeg", ".avi"]):
+                try:
+                    CAM.stop()
+                    print ("[camera]: OFF")
+                except:
+                    print ("can't stop camera")
                 # load a VIDEO
                 try:
                     video_stream = cv2.VideoCapture(path)

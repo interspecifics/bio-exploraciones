@@ -4,7 +4,7 @@ from scipy.spatial import distance as dist
 from collections import OrderedDict
 import numpy as np
 class scTracker():
-	def __init__(self, maxDisappeared=50):
+	def __init__(self, maxDisappeared=60):
 		# initialize
 		self.nextObjectID = 0
 		self.objects = OrderedDict()
