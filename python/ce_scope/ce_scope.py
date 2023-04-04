@@ -295,7 +295,8 @@ def update_data_send_m2():
         text = "obj{}".format(objectID)
         act_set = [int(objectID), int(centroid[0]), int(centroid[1])]
         #print(text, act_set[0], act_set[1], act_set[2])
-        ruta = '/ce_scope/obj{}'.format(objectID)
+        #ruta = '/ce_scope/obj{}'.format(objectID)
+        ruta = '/ce_scope/obj'
         try:
             ##print(ruta,'\t',act_set)
             OSC_CLIENT.send_message(ruta.encode('utf-8'), act_set)
